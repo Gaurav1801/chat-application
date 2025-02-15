@@ -15,10 +15,10 @@ module.exports = {
 
   loginUser: async (req, res) => {
     try {
-      const token = await userService.loginUser(req.body);
+      const data = await userService.loginUser(req.body);
       res
         .status(200)
-        .json({ succes: true, message: "Login successful", token });
+        .json({ succes: true, message: "Login successful", data });
     } catch (error) {
       res.status(401).json({ succes: false, error: error.message });
     }
