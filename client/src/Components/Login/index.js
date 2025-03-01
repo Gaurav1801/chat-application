@@ -29,6 +29,9 @@ const Login = () => {
         console.log("values",values)
         const response = await loginUser(values);
         console.log("Login Successful:", response);
+        if(response.success){
+          navigate('/chats')
+        }
       } catch (error) {
         setErrorMessage(error.response?.data?.message || "Login failed");
       }

@@ -40,39 +40,13 @@ module.exports = {
     };
     return userData;
   },
+  getAllUsers:async()=>{
+   try {
+    const users=await User.find({})
+    // console.log("users", users)
+    return users
+   } catch (error) {
+    return error
+   }
+  }
 };
-// registerUser : async ({ name, email, password }) => {
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//         throw new Error("User already exists");
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     const user = new User({ name, email, password: hashedPassword
-
-//      });
-
-//     await user.save();
-//     return user;
-// };
-
-// exports.loginUser = async ({ email, password }) => {
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//         throw new Error("Invalid email or password");
-//     }
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//         throw new Error("Invalid email or password");
-//     }
-
-//     const token = jwt.sign({ userId: user._id }, SECRET_KEY, { expiresIn: "1h" });
-//     const userData={
-//         name:user.name,
-//         email:user.email,
-//         token:token
-
-//     }
-//     return userData;
-// };
