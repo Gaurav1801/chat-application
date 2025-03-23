@@ -1,22 +1,62 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { FaUser, FaPaperPlane } from "react-icons/fa";
+import { FaUser, FaPaperPlane, FaSignOutAlt } from "react-icons/fa";
+import { io } from "socket.io-client";
 import { getAllUsers } from "../../service/users";
+import ChatSection from "./ChatSection";
+import { getAllMessage, sendMessage } from "../../service/chat";
+import { useNavigate } from "react-router-dom";
+
+const socket = io("http://localhost:5000");
 
 const ChatPage = () => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [messages, setMessages] = useState({});
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const navigate = useNavigate();
 
+  const loginUserData = localStorage.getItem("loginUser");
+  const loginUser = JSON.parse(loginUserData);
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem("loginUser"); // Remove user data
+    navigate("/"); // Redirect to login page
+  };
+
+  // Fetch messages for selected user
+  const getMessage = async () => {
+    if (!selectedUser?._id || !loginUser?.id) return;
+    try {
+      const roomID = [loginUser.id, selectedUser._id].sort().join("_");
+      const response = await getAllMessage({
+        chatId: roomID,
+        user1: loginUser.id,
+        user2: selectedUser._id,
+      });
+      if (response?.success) {
+        setMessages(response.data.messages);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUser) {
+      getMessage();
+    }
+  }, [selectedUser]);
+
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const response = await getAllUsers();
-        console.log("response", response);
         if (response.success) {
           setUsers(response.data);
-          setSelectedUser(response.data[0]);
+          setSelectedUser(response.data[0]); // Auto-select first user
         }
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -25,22 +65,58 @@ const ChatPage = () => {
     fetchUsers();
   }, []);
 
-  const handleSendMessage = () => {
+  // Join chat room when user is selected
+  useEffect(() => {
+    if (loginUser?.id && selectedUser?._id) {
+      const roomID = [loginUser.id, selectedUser._id].sort().join("_");
+      socket.emit("join_chat", roomID);
+    }
+  }, [selectedUser, loginUser]);
+
+  // Send message function
+  const handleSendMessage = async () => {
     if (!input.trim() || !selectedUser) return;
-    setMessages((prev) => ({
-      ...prev,
-      [selectedUser._id]: [...(prev[selectedUser._id] || []), { text: input, sender: "me" }],
-    }));
+
+    const roomID = [loginUser.id, selectedUser._id].sort().join("_");
+
+    const messageData = {
+      user1: loginUser?.id,
+      user2: selectedUser._id,
+      chatId: roomID,
+      message: input,
+      receiver: selectedUser?.name,
+      sender: loginUser.id,
+      id: `${loginUser.id}-${Date.now()}`,
+      type: "text",
+    };
+
+    try {
+      const response = await sendMessage(messageData);
+      if (response.success) {
+        socket.emit("send_message", messageData);
+        // setMessages((prev) => [...prev, messageData]); // Instant UI update
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+
     setInput("");
+  };
+
+  // Handle "Enter" key press
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage();
+    }
   };
 
   return (
     <div className="flex h-screen bg-gradient-to-r from-blue-500 to-purple-600 items-center justify-center">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }} 
-        animate={{ opacity: 1, scale: 1 }} 
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-3/4 h-4/5 bg-white shadow-2xl rounded-2xl flex overflow-hidden"
+        className="w-5/6 h-5/6 bg-white shadow-2xl rounded-2xl flex overflow-hidden"
       >
         {/* Sidebar */}
         <div className="w-1/4 bg-gray-800 text-white p-4">
@@ -62,25 +138,17 @@ const ChatPage = () => {
         <div className="flex flex-col w-3/4">
           {/* Chat Header */}
           <div className="p-4 bg-blue-600 text-white font-semibold text-lg flex justify-between items-center">
-            {selectedUser?.name || "Select a user"}
+            <div>{selectedUser?.name || "Select a user"}</div>
+            <button
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt /> Logout
+            </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 p-4 overflow-y-auto bg-gray-100">
-            {(messages[selectedUser?._id] || []).map((msg, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: msg.sender === "me" ? 50 : -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`p-3 my-2 rounded-lg max-w-xs w-fit ${
-                  msg.sender === "me" ? "bg-blue-500 text-white ml-auto" : "bg-gray-300"
-                }`}
-              >
-                {msg.text}
-              </motion.div>
-            ))}
-          </div>
+          {/* Chat Messages */}
+          <ChatSection messages={messages} selectedUser={selectedUser} setMessages={setMessages} socket={socket} />
 
           {/* Input Box */}
           <div className="p-4 bg-white flex items-center border-t">
@@ -90,6 +158,7 @@ const ChatPage = () => {
               placeholder="Type a message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown} // Sends message on Enter key press
             />
             <button
               className="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
