@@ -23,7 +23,7 @@ app.use(express.json());
 // Database Connection
 connectDB();
 app.use("/", () => {
-        console.log("chat is connected successfully")
+        res.send("API is running");
     })
     // Routes
 app.use("/api/users", userRoutes);
