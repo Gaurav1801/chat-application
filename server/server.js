@@ -22,7 +22,7 @@ app.use(express.json());
 
 // Database Connection
 connectDB();
-app.use("/", () => {
+app.use("/", (req, res) => {
         res.send("API is running");
     })
     // Routes
