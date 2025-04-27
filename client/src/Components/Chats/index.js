@@ -6,6 +6,7 @@ import { getAllUsers } from "../../service/users";
 import ChatSection from "./ChatSection";
 import { getAllMessage, sendMessage } from "../../service/chat";
 import { useNavigate } from "react-router-dom";
+import { FaUserCircle } from "react-icons/fa";
 
 const socket = io("http://localhost:5000");
 
@@ -14,6 +15,8 @@ const ChatPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   const loginUserData = localStorage.getItem("loginUser");
@@ -139,12 +142,32 @@ const ChatPage = () => {
           {/* Chat Header */}
           <div className="p-4 bg-blue-600 text-white font-semibold text-lg flex justify-between items-center">
             <div>{selectedUser?.name || "Select a user"}</div>
-            <button
+            {/* <button
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
               onClick={handleLogout}
             >
               <FaSignOutAlt /> Logout
-            </button>
+            </button> */}
+             <div ref={dropdownRef} className="relative inline-block text-left">
+                      <div
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="flex items-center cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                      >
+                        <FaUserCircle size={24} className="text-gray-700" />
+                        <span className="ml-2 font-medium text-gray-800">{loginUser?.name}</span>
+                      </div>
+            
+                      {dropdownOpen && (
+                        <div className="absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-md z-50">
+                          <button
+                            onClick={handleLogout}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Logout
+                          </button>
+                        </div>
+                      )}
+                    </div>
           </div>
 
           {/* Chat Messages */}
